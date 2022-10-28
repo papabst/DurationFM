@@ -1,4 +1,5 @@
 # DurationFM
+import pandas
 
 API_KEY = 'd4277889b2fd629b518c0a575d91360d'
 USER_AGENT = 'DurationFM'
@@ -68,22 +69,30 @@ def main():
     requests_cache.install_cache()
 
     list_df = {
+        'list_dfmid': [],
         'track_name': [],
         'track_mbid': [],
+        'track_lfmid': [],
         'artist_name': [],
         'artist_mbid': [],
         'album_name': [],
         'album_mbid': [],
-        'date_utc': [],
         'images_s': [],
         'images_m': [],
         'images_l': [],
         'images_xl': [],
+        'count': [],
         'duration': [],
         'isrc': []
     }
 
+    date_df = {
+        'date_dfmid': [],
+        'date_utc': []
+    }
+
     responses = []
+    durationfmid = 1
     page = 1
     total_pages = 2 # this is just a dummy number so the loop starts
     payload = {
@@ -121,17 +130,33 @@ def main():
 
 
         for t in response.json()['recenttracks']['track']:
-            list_df['track_name'].append(t['name'])
-            list_df['track_mbid'].append(t['mbid'])
-            list_df['artist_name'].append(t['artist']['#text'])
-            list_df['artist_mbid'].append(t['artist']['mbid'])
-            list_df['album_name'].append(t['album']['#text'])
-            list_df['album_mbid'].append(t['album']['mbid'])
-            list_df['date_utc'].append(t['date']['uts'])
-            list_df['images_s'].append(t['image'][0]['#text'])
-            list_df['images_m'].append(t['image'][1]['#text'])
-            list_df['images_l'].append(t['image'][2]['#text'])
-            list_df['images_xl'].append(t['image'][3]['#text'])
+            if t['mbid'] not in list_df['track_lfmid'] or len(t['mbid']) == 0:
+                list_df['list_dfmid'].append(durationfmid)
+                list_df['track_name'].append(t['name'])
+                list_df['track_lfmid'].append(t['mbid'])
+                list_df['artist_name'].append(t['artist']['#text'])
+                list_df['artist_mbid'].append(t['artist']['mbid'])
+                list_df['album_name'].append(t['album']['#text'])
+                list_df['album_mbid'].append(t['album']['mbid'])
+                list_df['images_s'].append(t['image'][0]['#text'])
+                list_df['images_m'].append(t['image'][1]['#text'])
+                list_df['images_l'].append(t['image'][2]['#text'])
+                list_df['images_xl'].append(t['image'][3]['#text'])
+                list_df['count'].append(1)
+
+                date_df['date_dfmid'].append(durationfmid)
+                durationfmid += 1
+
+                list_df['track_mbid'].append('dummy')
+                list_df['duration'].append('dummy')
+                list_df['isrc'].append('dummy')
+
+            else:
+                df_index = list_df['track_lfmid'].index(t['mbid'])
+                list_df['count'][df_index] += 1
+                date_df['date_dfmid'].append(list_df['list_dfmid'][df_index])
+
+            date_df['date_utc'].append(t['date']['uts'])
 
         # if it's not a cached result, sleep
         if not getattr(response, 'from_cache', False):
@@ -142,17 +167,18 @@ def main():
         payload.update({'page': page})
 
     test = 3
-    df = pd.DataFrame(list_df)
+    finalbreakpoint = test + 1
+    #df = pd.DataFrame(list_df)
 
 
-    tracks = pd.concat(frames)
+    #tracks = pd.concat(frames)
     #tracks = tracks.drop(['artist', 'streamable', 'image', 'album', 'url', 'date'], axis=1)
-    tracks.head()
-    tracks.info()
-    tracks.describe()
-    track_counts = [len(r.json()['recenttracks']['track']) for r in responses]
-    pd.Series(track_counts).value_counts()
-
+    #tracks.head()
+    #tracks.info()
+    #tracks.describe()
+    #track_counts = [len(r.json()['recenttracks']['track']) for r in responses]
+    #pd.Series(track_counts).value_counts()
+    tracks = pandas.DataFrame.from_dict(list_df)
     tracks.to_csv('tracks.csv')
 
 if __name__ == '__main__':
